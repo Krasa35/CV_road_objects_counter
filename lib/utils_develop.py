@@ -111,13 +111,14 @@ class Bbox():
         )
 
 class CentroidTracker:
-    def __init__(self, max_missed=50, recovery_zone_x=[[800, 1800]], max_distance=500, height_thresh=50):
+    def __init__(self, max_missed=50, recovery_zone_x=[[800, 1800]], max_distance=500, height_thresh=40, min_frames_detected=20):
         self.objects = {}      # object_id: {'bbox': Bbox, 'missed': int}
         self.next_id = 0
         self.max_missed = max_missed
         self.recovery_zone_x = recovery_zone_x
         self.max_distance = max_distance
         self.height_thresh = height_thresh
+        self.min_frames_detected = min_frames_detected
 
     def update(self, bboxes: list[Bbox]):
         detected_centroids = [(b.cx, b.cy) for b in bboxes]
@@ -134,7 +135,7 @@ class CentroidTracker:
                 if min_dist < self.max_distance and data['bbox'].h - bboxes[idx].h < self.height_thresh and idx not in used_indices:
                     velocity = ((detected_centroids[idx][0] - old_centroid[0]) + data['velocity'] ) // 2
                     print(f"Object {oid} matched with new detection at index {idx}, distance {min_dist}, velocity {velocity}")
-                    new_objects[oid] = {'bbox': bboxes[idx], 'missed': 0, 'velocity': velocity}
+                    new_objects[oid] = {'bbox': bboxes[idx], 'missed': 0, 'detected': data['detected'] + 1, 'velocity': velocity}
                     used_indices.add(idx)
                 else:
                     data['missed'] += 1
@@ -144,27 +145,28 @@ class CentroidTracker:
             else:
                 data['missed'] += 1
                 data['bbox'].cx += data['velocity']
-                if data['missed'] < self.max_missed:
+                if data['missed'] < self.max_missed and data['detected'] > self.min_frames_detected:
                     new_objects[oid] = data
 
         # Add new objects or recover lost ones inside recovery zone
         for i, bbox in enumerate(bboxes):
             if i not in used_indices:
-                for rec_zone in self.recovery_zone_x:
-                    if bbox.cx > rec_zone[0] and bbox.cx < rec_zone[1]:
+                # for rec_zone in self.recovery_zone_x:
+                    # if bbox.cx > rec_zone[0] and bbox.cx < rec_zone[1]:
                         for oid, data in self.objects.items():
-                            if data['missed'] <= self.max_missed:
+                            if data['missed'] >= self.max_missed:
                                 dist = distance.euclidean((data['bbox'].cx, data['bbox'].cy), (bbox.cx, bbox.cy))
                                 print(f"Recovery check: {oid} missed {data['missed']} times, distance {dist}")
                                 if dist < self.max_distance:
-                                    new_objects[oid] = {'bbox': bbox, 'missed': 0, 'velocity': 0}
+                                    new_objects[oid] = {'bbox': bbox, 'missed': 0, 'detected': 0, 'velocity': 0}
                                     break
-                        else:
-                            new_objects[self.next_id] = {'bbox': bbox, 'missed': 0, 'velocity': 0}
-                            self.next_id += 1
-                    else:
-                        new_objects[self.next_id] = {'bbox': bbox, 'missed': 0, 'velocity': 0}
-                        self.next_id += 1
+                            else:
+                                new_objects[self.next_id] = {'bbox': bbox, 'missed': 0, 'detected': 0, 'velocity': 0}
+                                # new_objects[self.next_id] = {'bbox': bbox, 'missed': 0, 'detected': data['detected'] + 1,  'velocity': data['velocity']}
+                                self.next_id += 1
+                    # else:
+                        # new_objects[self.next_id] = {'bbox': bbox, 'missed': 0, 'detected': 0, 'velocity': 0}
+                        # self.next_id += 1
 
         self.objects = new_objects
 
@@ -175,7 +177,7 @@ class CentroidTracker:
             cv.rectangle(frame, bbox.start_corner(), bbox.end_corner(), bbox.color, 2)
             # Draw centroid and ID
             cv.circle(frame, (bbox.cx, bbox.cy), 5, bbox.color, -1)
-            cv.putText(frame, f"ID {object_id}", (bbox.cx + 10, bbox.cy), cv.FONT_HERSHEY_SIMPLEX, 1, bbox.color, 2)
+            cv.putText(frame, f"ID {object_id}", (bbox.cx + 10, bbox.cy), cv.FONT_HERSHEY_SIMPLEX, 0.5, bbox.color, 2)
 
         # Draw recovery zone
         for rec_zone in self.recovery_zone_x:

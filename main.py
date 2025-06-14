@@ -4,7 +4,7 @@ from pathlib import Path
 
 import cv2
 
-from lib.utils import perform_processing
+from lib.process import perform_processing
 
 
 def main():
