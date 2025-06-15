@@ -12,3 +12,15 @@ The project aims to count moving objects on the road. Project was prepared to co
 - `output`: Includes outputs ideal and developed during the project making.
 - `main.py`: The main script that finds the best machine learning model and prints the results.
 - `requirements.txt`: Lists all required Python packages to run the project.
+
+>**Note:** The project is designed to be run in a Python 3.8 environment. Ensure that you have the correct version of Python installed.
+
+
+> [!IMPORTANT]
+> Key information users need to know to achieve their goal.
+
+> [!WARNING]
+> Urgent info that needs immediate user attention to avoid problems.
+
+> [!CAUTION]
+> Advises about risks or negative outcomes of certain actions.

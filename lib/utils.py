@@ -46,6 +46,7 @@ class Bbox():
         self.color = (0, 255, 0)  # Default color for drawing
         self.type = self._find_type()
         self.color = self._assign_color() 
+        self.square_front = self._is_front_square()
 
     def start_corner(self) -> tuple[int, int]:
         return self.x, self.y
@@ -69,7 +70,10 @@ class Bbox():
                 return Type.R2L_truck
             else:
                 return Type.R2L_car
-        
+            
+    def _is_front_square(self) -> bool:
+        pass
+
     def _assign_color(self) -> tuple[int, int, int]:
         if self.type == Type.R2L_car or self.type == Type.R2L_truck:
             return Row_utils.R2L_COLOR
@@ -111,7 +115,6 @@ class TrackerObject(Bbox):
         self.missed = missed
         self.detected_count = detected_count
         self.coming_side = self._find_coming_side()
-        self.square_front = self._is_front_square()
         self.velocity = 1 if self.coming_side == Side.LEFT else -1
         self.blackout_zones = blackout_zones
 
@@ -121,7 +124,6 @@ class TrackerObject(Bbox):
         self.x, self.y, self.w, self.h = cv.boundingRect(bbox.cnt)
         self.detected_count += 1
         self.missed = 0
-        self.centroid = (self.cx, self.cy)
         # M = cv.moments(bbox.cnt)
         # if M['m00'] != 0:
         #     self.cx = int(M['m10'] / M['m00'])
@@ -130,6 +132,7 @@ class TrackerObject(Bbox):
         #     print("[WARN] Zero moment detected, using bbox center")
         self.cx = self.x + self.w // 2
         self.cy = self.y + self.h // 2
+        self.centroid = (self.cx, self.cy)
 
     def predict(self):
         self.x += self.velocity
@@ -155,8 +158,7 @@ class TrackerObject(Bbox):
         else:
             return Side.RIGHT
         
-    def _is_front_square(self) -> bool:
-        pass
+
 
 class CentroidTracker:
     def __init__(self, max_missed=50, blackout_zones=[[1000, 1200], [1400, 1700]], max_distance=300, height_thresh=100, min_frames_detected=10):
@@ -226,11 +228,11 @@ class CentroidTracker:
 
     def _add_new_objects(self, bboxes: list[Bbox], used_indices: set):
         for oid, bbox in enumerate(bboxes):
-                    if oid not in used_indices:
-                        # Only allow creation of new objects at the edges (first and last 200 pixels)
-                        if bbox.cx < 200 or bbox.cx > (1900 - 200):
-                            self.pending_objects.append(TrackerObject(bbox, missed=0, detected_count=1, blackout_zones=self.blackout_zones))
-                            used_indices.add(oid)
+            if oid not in used_indices:
+                # Only allow creation of new objects at the edges (first and last 200 pixels)
+                if bbox.cx < 200 or bbox.cx > (1900 - 200):
+                    self.pending_objects.append(TrackerObject(bbox, missed=0, detected_count=1, blackout_zones=self.blackout_zones))
+                    used_indices.add(oid)
 
     def _merge_objects(self, bboxes: list[Bbox], used_indices: set):
         for bbox1 in bboxes:
@@ -246,17 +248,15 @@ class CentroidTracker:
                             bboxes.remove(bbox1)
                             bboxes.remove(bbox2)
                             break
-                # Process remaining unused bboxes
-                # for i, bbox in enumerate(bboxes):
-                #     if i not in used_indices:
-                #         if (abs(bbox.y - t_object.y) < 10 or abs(bbox.end_corner()[1] - t_object.end_corner()[1]) < 10) and \
-                #         (abs(bbox.cx - t_object.cx) < 50 or \
-                #         (abs(bbox.cx - t_object.cx) < 600 and (any(abs(t_object.x - zone[1]) < 20 for zone in t_object.blackout_zones)))):
-                #             # Merge contours of t_object and bbox
-                #             combined_cnt = np.vstack((t_object.cnt, bbox.cnt))
-                #             t_object.update(Bbox(combined_cnt))
-                #             used_indices.add(i)
-                #             break
+                    if (abs(bbox1.y - bbox2.y) < 10 or abs(bbox1.end_corner()[1] - bbox2.end_corner()[1]) < 10) and \
+                       (abs(bbox1.cx - bbox2.cx) < 50 or \
+                       (abs(bbox1.cx - bbox2.cx) < 600 and (any(abs(bbox2.x - zone[1]) < 20 for zone in self.blackout_zones)))):
+                            combined_cnt = np.vstack((bbox1.cnt, bbox2.cnt))
+                            bboxes.append(Bbox(combined_cnt))
+                            bboxes.remove(bbox1)
+                            bboxes.remove(bbox2)
+                            break
+
         return bboxes
 
     def update(self, bboxes: list[Bbox]):
