@@ -1,0 +1,1 @@
+#   Raport skryptu do liczenia poruszających się obiektów na scenie drogi

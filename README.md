@@ -1,7 +1,14 @@
 # Object counting project
+Repository for the allNBA team prediction project. Project is part of the Computer Vision course at the Poznan University of Technology.
 
-For run ensure you have installed the required packages and wheel for building pybgs:
-```bash
-pip install --upgrade pip setuptools wheel
-pip install -r requirements.txt
-```
+## Project description
+The project aims to count moving objects on the road. Project was prepared to count passing objects near Poznań University Of Technology building with a view like on the photo below. Project was intended to base on ready solutions for contour picking and tracking bounding boxes but needs were more demanding. Own Tracker has been written. Entire report written in Polish can be found in the doc folder. [Report link](doc/README.md)
+
+![alt text](doc/figures/image.png)
+
+## Project structure
+- `lib`: Contains the core source code and main logic for the project.
+- `doc`: Includes the project report and additional documentation.
+- `output`: Includes outputs ideal and developed during the project making.
+- `main.py`: The main script that finds the best machine learning model and prints the results.
+- `requirements.txt`: Lists all required Python packages to run the project.
